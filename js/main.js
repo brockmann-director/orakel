@@ -23,7 +23,13 @@ const FASSUNGEN = {
     wenden: [1.12, 1.67, 2.17, 3.88, 4.38, 4.75],
     wellen: [{ start: 0.95, unten: 1.67, ende: 2.4 }, { start: 3.7, unten: 4.38, ende: 5.0 }],
   },
-  quer: null,
+  quer: {
+    video: 'assets/katze-quer.mp4',
+    bild: 'assets/katze-quer.jpg',
+    portal: { x: 0.498, y: 0.517, rx: 0.05, ry: 0.0894 },
+    wenden: [0.45, 1.4, 2.55, 2.95, 3.85, 4.95],
+    wellen: [{ start: 0.4, unten: 1.4, ende: 2.6 }, { start: 2.85, unten: 3.85, ende: 5.0 }],
+  },
 };
 const istQuer = () => !!FASSUNGEN.quer && window.innerWidth / window.innerHeight > 1.15;
 let VIDEO = istQuer() ? FASSUNGEN.quer : FASSUNGEN.hoch;

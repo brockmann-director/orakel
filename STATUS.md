@@ -4,7 +4,7 @@ Winkekatzen-Orakel für die 27km-Kollegies. Frage laut stellen (oder iPhone sch�
 
 ## Stand (2026-11-23, Fassung 2)
 - Fassung 1 (Echtzeit-3D-Katze aus Blender, Kung-Fu-Intro) hat Jan verworfen: zu billig. Fassung 2 ist fotorealistisch.
-- Katze = Video, aus Jans Higgsfield-Bild animiert (Kling 3.0 pro, Start- und Endbild gleich → nahtloser Loop, 6 s, winkt zweimal). Hochkant `assets/katze.mp4` fürs Handy, quer `assets/katze-quer.mp4` für den Rechner (Bild per Outpaint erweitert).
+- Katze = Video, aus Jans Higgsfield-Bild animiert (Kling 3.0 pro, Start- und Endbild gleich → nahtloser Loop, 6 s, winkt zweimal). Hochkant `assets/katze.mp4` fürs Handy, quer `assets/katze-quer.mp4` für den Rechner (Bild per Outpaint erweitert, eigener Kling-Lauf mit deutlichem Winken, abends gegradet; ab Seitenverhältnis 1,15 bildfüllend).
 - Alles Bewegte darüber ist ein Shader (`js/buehne.js`): Bild bildfüllend, Portal-Nebel, aufsteigende Antwort (Text in Rot = Schrift, Grün = Glut), Licht auf der Keramik, Kamerafahrt (Zoom + Schwenk aufs Portal), Bodennebel, Korn.
 - Version A: kuratierte Antworten ohne KI, Test bis Ende der Woche. Danach Entscheidung über Version C (Claude + Fallback).
 - Statische Seite für GitHub Pages (Branch `main`, Root). Kein Build-Schritt.
@@ -19,7 +19,7 @@ Winkekatzen-Orakel für die 27km-Kollegies. Frage laut stellen (oder iPhone sch�
 - `js/orakel.js` – Auswahl der Antwort (Signalwörter → Themen, Stimmungs-Gewichte, keine Wiederholung der letzten 14)
 - `js/teilen.js` – Teilen-Bild 1080×1350
 - `data/sprueche.json` – **hier kommen neue Sprüche rein** (`original`, `stimmung` ja/vielleicht/nein/rat, `themen`, `fassungen`)
-- `tools/video.py` – neues Video aufbereiten: `python3 tools/video.py roh.mp4` schreibt `assets/katze.mp4` + `.jpg` und misst die Wendepunkte der Pfote (für `FASSUNGEN` in main.js). Für quer Ausgabe-Namen anpassen.
+- `tools/video.py` – neues Video aufbereiten: `python3 tools/video.py roh.mp4` schreibt `assets/katze.mp4` + `.jpg` und misst die Wendepunkte der Pfote (für `FASSUNGEN` in main.js). Quer: `--ziel katze-quer --breite 1920 --x0 0.53 --x1 0.68` plus Grade (`--grade "eq=brightness=-0.07:contrast=1.1:saturation=0.85:gamma=0.88,colorbalance=rs=-0.04:bs=0.05:rm=-0.03:bm=0.03:rh=-0.02:bh=0.02,vignette=PI/4.5"`).
 - `vendor/` – three.js 0.170.0 (MIT)
 
 ## Regeln (Jan)

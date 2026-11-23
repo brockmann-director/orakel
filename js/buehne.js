@@ -189,8 +189,15 @@ export function baueBuehne(renderer) {
     // Hochkant: etwas überfüllen, damit oben/unten weniger Rand bleibt
     const m = uniforms.uMedGr.value;
     const hochkant = breite / hoehe < m.x / m.y;
-    uniforms.uUeber.value = hochkant ? 1.05 : 1.0;
-    uniforms.uSeite.value = hochkant ? 0 : 1;
+    if (m.x > m.y && breite > hoehe) {
+      // Querformat-Video auf Querformat-Schirm: möglichst bildfüllend (Rand nur bei sehr anderen Seitenverhältnissen)
+      const fuell = Math.max((m.x / m.y) / (breite / hoehe), (breite / hoehe) / (m.x / m.y));
+      uniforms.uUeber.value = Math.min(fuell * 1.01, 1.22);
+      uniforms.uSeite.value = fuell * 1.01 > 1.22 && !hochkant ? 1 : 0;
+    } else {
+      uniforms.uUeber.value = hochkant ? 1.05 : 1.0;
+      uniforms.uSeite.value = hochkant ? 0 : 1;
+    }
   }
 
   // Text in zwei Kanälen: Rot = Schrift, Grün = Glut drumherum.
