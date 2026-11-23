@@ -14,21 +14,19 @@
   <link rel="apple-touch-icon" href="assets/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Ma+Shan+Zheng&family=Shojumaru&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="stil.css">
+  <link rel="preload" href="assets/katze.jpg" as="image" crossorigin="anonymous">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
   </script>
 </head>
 <body data-modus="schlafen">
   <canvas id="buehne" aria-label="Die Winkekatze"></canvas>
-  <canvas id="intro"></canvas>
-
-  <div id="erwachen">
-    <div class="zeichen">真理之爪</div>
-    <h1>Die Pfote<br>der Wahrheit</h1>
-    <button id="erwachen-knopf" type="button">Erwecken</button>
-    <p class="klein">Mit Ton. Auf dem iPhone darf sie auch Bewegung und Mikrofon.</p>
+  <div id="erwachen" role="button" tabindex="0" aria-label="Die Pfote erwecken">
+    <h1>Die Pfote der Wahrheit</h1>
+    <p class="beruehren">Berühren, um sie zu erwecken</p>
+    <p class="klein">Mit Ton</p>
   </div>
 
   <div id="oben">

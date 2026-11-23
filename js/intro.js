@@ -1,281 +1,160 @@
-// Start-Intro im Stil eines 70er-Jahre-Kung-Fu-B-Movies.
-import * as klang from './klang.js';
+// Studio-Ident: knapp vier Sekunden. Ein Licht fährt über das 27km-Logo aus
+// gebürstetem Metall, Funkenstaub im Strahl, dann Schwarz.
+import * as THREE from 'three';
 
-const DAUER = 6.2;
-const LANDEN = 5.15; // Zeitpunkt, an dem die Katze im 3D-Bild landet
+export const IDENT_DAUER = 3.9;
 
-function laden(src) {
-  return new Promise((ok) => {
-    const img = new Image();
-    img.onload = () => ok(img);
-    img.onerror = () => ok(null);
-    img.src = src;
+const vertex = /* glsl */ `
+  varying vec2 vUv;
+  void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
+`;
+
+const fragment = /* glsl */ `
+  precision highp float;
+  uniform sampler2D uLogo;
+  uniform vec2 uSchirm;
+  uniform float uT;
+  uniform float uAsp;
+  varying vec2 vUv;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+  float noise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+  }
+  float alpha(vec2 uv, float b) {
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return 0.0;
+    return texture2D(uLogo, uv, b).a;
+  }
+  float easeInOut(float x) { x = clamp(x, 0.0, 1.0); return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) * 0.5; }
+
+  void main() {
+    float t = uT;
+    vec2 p = (vUv - 0.5) * uSchirm;
+    float L = min(uSchirm.x * 0.6, uSchirm.y * 0.36 * uAsp) * (1.0 + 0.045 * t / 3.9);
+    vec2 luv = p / vec2(L, L / uAsp) + 0.5;
+
+    // Licht fährt von links nach rechts
+    float fahrt = easeInOut((t - 0.18) / 2.1);
+    float lx = mix(-0.25, 1.22, fahrt);
+    float an = smoothstep(0.16, 0.26, t);
+    float blitz = an * exp(-max(t - 0.2, 0.0) * 7.0);
+    float licht = an * (1.0 - 0.55 * smoothstep(2.2, 2.9, t));
+
+    // Logo als geprägtes Metall
+    float al = alpha(luv, 0.0);
+    float e = 3.0 / L;
+    vec2 ex = vec2(e, 0.0), ey = vec2(0.0, e * uAsp);
+    float hx = alpha(luv + ex, 3.0) - alpha(luv - ex, 3.0);
+    float hy = alpha(luv + ey, 3.0) - alpha(luv - ey, 3.0);
+    vec3 n = normalize(vec3(-hx * 1.4, -hy * 1.4, 1.0));
+    vec3 P = vec3(luv.x, luv.y / uAsp, 0.0);
+    vec3 Lp = vec3(lx, 0.62 / uAsp, 0.22);
+    vec3 Ld = normalize(Lp - P);
+    float dist = length(Lp - P);
+    float fall = 1.0 / (1.0 + dist * dist * 22.0);
+    vec3 H = normalize(Ld + vec3(0.0, 0.0, 1.0));
+    float spec = pow(max(dot(n, H), 0.0), 70.0);
+    float diff = max(dot(n, Ld), 0.0);
+    float strich = noise(vec2(luv.x * 5.0, luv.y * 700.0)) * 0.6 + noise(vec2(luv.x * 30.0, luv.y * 2600.0)) * 0.4;
+    vec3 metall = vec3(0.93, 0.76, 0.5);
+    float grund = 0.035 + 0.2 * smoothstep(1.7, 2.7, t);
+    float kante = clamp(length(vec2(hx, hy)) * 1.5, 0.0, 1.0);
+    vec3 logo = metall * (grund * (0.6 + 0.7 * strich) + diff * fall * 2.4 * licht * (0.7 + 0.6 * strich));
+    logo += vec3(1.0, 0.93, 0.82) * spec * fall * 7.0 * licht;
+    logo += metall * kante * (fall * 2.6 * licht + grund * 1.5);
+    // Glanzlinie, die einmal schräg drüberläuft
+    float g = (t - 2.45) * 1.7;
+    float diag = luv.x + luv.y * 0.3 - g;
+    logo += vec3(1.0, 0.95, 0.86) * exp(-diag * diag * 1400.0) * step(2.4, t) * 1.4;
+    vec3 farbe = logo * al;
+
+    // Lichtquelle auf dem Schirm, Lichthof und anamorphotischer Streifen
+    vec2 lpx = vec2((lx - 0.5) * L, (0.62 - 0.5) * L / uAsp + L / uAsp * 0.08);
+    vec2 d = p - lpx;
+    float hof = exp(-length(d) / (uSchirm.y * 0.16));
+    float dunst = noise(p * 0.006 + vec2(t * 0.08, -t * 0.03)) * 0.6 + noise(p * 0.017 - t * 0.05) * 0.4;
+    float streifen = exp(-abs(d.y) / (uSchirm.y * 0.0035)) * exp(-abs(d.x) / (uSchirm.x * 0.3));
+    vec3 warm = vec3(1.0, 0.72, 0.42);
+    farbe += warm * hof * (0.08 + 0.16 * dunst) * licht * (1.0 - al);
+    farbe += vec3(1.0, 0.86, 0.68) * streifen * (0.35 * licht + 1.6 * blitz);
+    farbe += vec3(1.0, 0.9, 0.75) * exp(-length(d) / (uSchirm.y * 0.025)) * (0.5 * licht + 2.0 * blitz) * (1.0 - al * 0.7);
+
+    // Funkenstaub im Strahl
+    for (int i = 0; i < 2; i++) {
+      float gr = i == 0 ? 26.0 : 41.0;
+      vec2 q = (p + vec2(t * 9.0, t * (14.0 + float(i) * 9.0))) / gr;
+      vec2 zelle = floor(q);
+      vec2 f = fract(q) - 0.5;
+      float h = hash(zelle + float(i) * 17.0);
+      vec2 ort = vec2(hash(zelle + 3.1), hash(zelle + 9.7)) - 0.5;
+      float punkt = smoothstep(0.09, 0.0, length(f - ort * 0.7)) * step(0.93, h);
+      farbe += warm * punkt * hof * 1.6 * licht;
+    }
+
+    // Ausblenden, Vignette, Korn
+    farbe *= 1.0 - smoothstep(3.15, 3.85, t);
+    farbe *= smoothstep(1.3, 0.3, length((vUv - 0.5) * vec2(uSchirm.x / uSchirm.y, 1.0)));
+    farbe += (hash(vUv * uSchirm + fract(t * 7.3) * 91.0) - 0.5) * 0.022;
+    gl_FragColor = vec4(max(farbe, 0.0), 1.0);
+  }
+`;
+
+let logoTex = null;
+export function ladeLogo() {
+  if (logoTex) return logoTex;
+  logoTex = new Promise((ok) => {
+    new THREE.TextureLoader().load('assets/27km-logo-2k.png', (t) => {
+      t.colorSpace = THREE.NoColorSpace;
+      t.generateMipmaps = true;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.anisotropy = 4;
+      ok(t);
+    }, undefined, () => ok(null));
   });
+  return logoTex;
 }
 
-function kornKacheln(n = 4, groesse = 256) {
-  return Array.from({ length: n }, () => {
-    const c = document.createElement('canvas');
-    c.width = c.height = groesse;
-    const g = c.getContext('2d');
-    const d = g.createImageData(groesse, groesse);
-    for (let i = 0; i < d.data.length; i += 4) {
-      const v = Math.random() * 255;
-      d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
-      d.data[i + 3] = 38;
+// Spielt das Ident auf dem gegebenen Renderer ab. onTon wird beim Start gerufen.
+export async function spieleIdent(renderer, { ueberspringbar = false, onTon } = {}) {
+  const tex = await ladeLogo();
+  if (!tex) return;
+  const uniforms = {
+    uLogo: { value: tex },
+    uSchirm: { value: new THREE.Vector2() },
+    uT: { value: 0 },
+    uAsp: { value: tex.image.width / tex.image.height },
+  };
+  const material = new THREE.ShaderMaterial({ vertexShader: vertex, fragmentShader: fragment, uniforms, depthTest: false, depthWrite: false });
+  const szene = new THREE.Scene();
+  szene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+  const kamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const reduziert = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  await new Promise((fertig) => {
+    let start = null;
+    let ende = IDENT_DAUER;
+    const weg = () => { if (ueberspringbar) ende = Math.min(ende, (performance.now() - start) / 1000 + 0.35); };
+    window.addEventListener('pointerdown', weg);
+    window.addEventListener('keydown', weg);
+    if (onTon) onTon();
+    function bild(jetzt) {
+      if (start === null) start = jetzt;
+      let t = (jetzt - start) / 1000;
+      if (reduziert) t = Math.max(t, 2.6); // ohne Lichtfahrt, nur das fertige Logo
+      const b = renderer.getDrawingBufferSize(new THREE.Vector2());
+      uniforms.uSchirm.value.copy(b);
+      uniforms.uT.value = t >= ende - 0.35 && ende < IDENT_DAUER ? 3.15 + (t - (ende - 0.35)) * 2 : t;
+      renderer.render(szene, kamera);
+      if (t < ende) requestAnimationFrame(bild);
+      else {
+        window.removeEventListener('pointerdown', weg);
+        window.removeEventListener('keydown', weg);
+        material.dispose();
+        fertig();
+      }
     }
-    g.putImageData(d, 0, 0);
-    return c;
-  });
-}
-
-const ease = (x) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3);
-const knall = (t, t0, dauer = 0.35) => ease((t - t0) / dauer);
-
-export async function spieleIntro(canvas, { ueberspringbar, onLanden }) {
-  const logo = await laden('assets/27km-logo.png');
-  try { await document.fonts.load('80px "Shojumaru"'); await document.fonts.load('80px "Ma Shan Zheng"'); } catch { /* egal */ }
-
-  const g = canvas.getContext('2d');
-  const korn = kornKacheln();
-  let W = 0; let H = 0; let dpr = 1;
-  function groesse() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = canvas.clientWidth; H = canvas.clientHeight;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-  }
-  groesse();
-  window.addEventListener('resize', groesse);
-
-  // Logo als roter Stempel mit ausgespartem Logo
-  let stempel = null;
-  if (logo) {
-    const s = document.createElement('canvas');
-    const pad = 70;
-    s.width = logo.width + pad * 2;
-    s.height = logo.height + pad * 2;
-    const sg = s.getContext('2d');
-    sg.fillStyle = '#c8190f';
-    sg.beginPath();
-    sg.roundRect(6, 6, s.width - 12, s.height - 12, 30);
-    sg.fill();
-    sg.globalCompositeOperation = 'destination-out';
-    sg.drawImage(logo, pad, pad);
-    sg.lineWidth = 14;
-    sg.strokeStyle = '#000';
-    sg.beginPath();
-    sg.roundRect(26, 26, s.width - 52, s.height - 52, 18);
-    sg.stroke();
-    // Stempel-Struktur: kleine Fehlstellen
-    for (let i = 0; i < 260; i++) {
-      sg.beginPath();
-      sg.arc(Math.random() * s.width, Math.random() * s.height, Math.random() * 5, 0, Math.PI * 2);
-      sg.fill();
-    }
-    sg.globalCompositeOperation = 'source-over';
-    stempel = s;
-  }
-
-  const kratzer = Array.from({ length: 4 }, () => ({ x: Math.random(), leben: 0 }));
-  const ereignisse = new Set();
-  const einmal = (name, t, t0, fn) => { if (t >= t0 && !ereignisse.has(name)) { ereignisse.add(name); fn(); } };
-
-  let wackeln = 0;
-  let start = null;
-  let fertig = false;
-  let stoppProjektor = null;
-
-  return new Promise((aufgeloest) => {
-    const beenden = () => {
-      if (fertig) return;
-      fertig = true;
-      if (stoppProjektor) stoppProjektor();
-      if (!ereignisse.has('landen')) onLanden();
-      canvas.style.transition = 'opacity .5s';
-      canvas.style.opacity = '0';
-      setTimeout(() => { canvas.style.display = 'none'; aufgeloest(); }, 520);
-      window.removeEventListener('resize', groesse);
-    };
-    if (ueberspringbar) canvas.addEventListener('pointerdown', beenden, { once: true });
-
-    function frame(now) {
-      if (fertig) return;
-      if (start === null) start = now;
-      const t = (now - start) / 1000;
-
-      einmal('projektor', t, 0, () => { stoppProjektor = klang.projektor(5.6); });
-      einmal('t1', t, 0.5, () => { klang.trommel(1, 1); wackeln = 18; });
-      einmal('w1', t, 1.45, () => klang.wusch(0.45, 1));
-      einmal('t2', t, 1.75, () => { klang.trommel(1.1, 0.8); wackeln = 22; });
-      einmal('t3', t, 2.05, () => klang.trommel(0.7, 1.2));
-      einmal('w2', t, 3.55, () => klang.wusch(0.3, 0.8));
-      einmal('stempel', t, 3.85, () => { klang.trommel(1.3, 0.6); wackeln = 30; });
-      einmal('gong', t, LANDEN - 0.05, () => { klang.gong(1); });
-      einmal('landen', t, LANDEN, () => { onLanden(); });
-
-      g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const weave = { x: (Math.random() - 0.5) * 2.4, y: (Math.random() - 0.5) * 2.4 };
-      wackeln *= 0.86;
-      const sx = weave.x + (Math.random() - 0.5) * wackeln;
-      const sy = weave.y + (Math.random() - 0.5) * wackeln;
-      g.fillStyle = '#000';
-      g.fillRect(0, 0, W, H);
-      g.save();
-      g.translate(sx, sy);
-
-      const m = Math.min(W, H);
-      if (t > 0.5) {
-        // Strahlen-Hintergrund
-        const k = knall(t, 0.5, 0.4);
-        g.save();
-        g.translate(W / 2, H * 0.45);
-        g.rotate(t * 0.15);
-        const strahlen = 18;
-        const R = Math.hypot(W, H);
-        for (let i = 0; i < strahlen; i++) {
-          g.fillStyle = i % 2 ? '#a3120a' : '#d8410f';
-          g.beginPath();
-          g.moveTo(0, 0);
-          g.arc(0, 0, R, (i / strahlen) * Math.PI * 2, ((i + 1) / strahlen) * Math.PI * 2);
-          g.fill();
-        }
-        g.restore();
-        g.fillStyle = `rgba(0,0,0,${1 - k})`;
-        g.fillRect(0, 0, W, H);
-
-        // Riesige Schriftzeichen mit Crash-Zoom
-        const zk = knall(t, 0.5, 0.32);
-        const hoch = knall(t, 1.5, 0.4);
-        const s = (4 - 3 * zk) * (1 - 0.45 * hoch);
-        const y = H * 0.45 - hoch * (H * 0.27);
-        g.save();
-        g.translate(W / 2, y);
-        g.scale(s, s);
-        g.font = `${m * 0.24}px "Ma Shan Zheng", serif`;
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        for (let geist = 3; geist >= 0; geist--) {
-          if (geist > 0 && zk > 0.98) continue;
-          g.globalAlpha = geist ? 0.18 : 1;
-          g.lineWidth = m * 0.02;
-          g.strokeStyle = '#000';
-          g.strokeText('真理之爪', 0, geist * 6);
-          g.fillStyle = '#ffd23a';
-          g.fillText('真理之爪', 0, geist * 6);
-        }
-        g.restore();
-        g.globalAlpha = 1;
-      }
-
-      if (t > 1.75) {
-        // Titel knallt rein
-        const k = knall(t, 1.75, 0.28);
-        const s = 2.6 - 1.6 * k;
-        g.save();
-        g.translate(W / 2, H * 0.5);
-        g.scale(s, s);
-        g.rotate(-0.04);
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        const fg = Math.min(m * 0.13, W * 0.11);
-        const zeilen = [['DIE PFOTE', -fg * 0.62, fg], ['DER WAHRHEIT', fg * 0.55, fg * 0.86]];
-        for (const [txt, yy, gr] of zeilen) {
-          g.font = `${gr}px "Shojumaru", "Impact", sans-serif`;
-          g.lineJoin = 'round';
-          g.lineWidth = gr * 0.24;
-          g.strokeStyle = '#1a0000';
-          g.strokeText(txt, 0, yy + gr * 0.06);
-          g.lineWidth = gr * 0.11;
-          g.strokeStyle = '#b30d05';
-          g.strokeText(txt, 0, yy);
-          const grad = g.createLinearGradient(0, yy - gr / 2, 0, yy + gr / 2);
-          grad.addColorStop(0, '#fff6a8');
-          grad.addColorStop(0.5, '#ffd000');
-          grad.addColorStop(1, '#ff8a00');
-          g.fillStyle = grad;
-          g.fillText(txt, 0, yy);
-        }
-        g.restore();
-      }
-
-      if (t > 2.6) {
-        // Untertitel wie aus einer schlechten Synchro
-        const text = 'SIE WINKT. SIE WEISS. SIE DÄNGELT.';
-        const n = Math.min(text.length, Math.floor((t - 2.6) * 26));
-        g.font = `bold ${Math.max(15, m * 0.042)}px "Arial Narrow", Arial, sans-serif`;
-        g.textAlign = 'center';
-        g.lineWidth = 5;
-        g.strokeStyle = '#000';
-        g.strokeText(text.slice(0, n), W / 2, H * 0.86);
-        g.fillStyle = '#ffef5a';
-        g.fillText(text.slice(0, n), W / 2, H * 0.86);
-      }
-
-      if (t > 3.85 && stempel) {
-        const k = knall(t, 3.85, 0.16);
-        const breite = Math.min(W * 0.42, m * 0.5);
-        const s = (2.8 - 1.8 * k);
-        const h = breite * (stempel.height / stempel.width);
-        g.save();
-        g.translate(W / 2 + Math.min(W * 0.22, m * 0.25), H * 0.68);
-        g.rotate(-0.13);
-        g.scale(s, s);
-        g.globalAlpha = 0.25 + 0.75 * k;
-        g.drawImage(stempel, -breite / 2, -h / 2, breite, h);
-        g.restore();
-        g.globalAlpha = 1;
-      }
-
-      g.restore();
-
-      // Filmlook: Tönung, Flackern, Korn, Kratzer, Staub, Vignette
-      g.globalCompositeOperation = 'multiply';
-      g.fillStyle = '#ffd7a0';
-      g.fillRect(0, 0, W, H);
-      g.globalCompositeOperation = 'source-over';
-      g.fillStyle = `rgba(0,0,0,${0.06 + Math.random() * 0.1})`;
-      g.fillRect(0, 0, W, H);
-      const kk = korn[Math.floor(t * 24) % korn.length];
-      g.fillStyle = g.createPattern(kk, 'repeat');
-      g.fillRect(0, 0, W, H);
-      for (const kr of kratzer) {
-        if (kr.leben <= 0 && Math.random() < 0.05) { kr.x = Math.random(); kr.leben = 3 + Math.random() * 10; }
-        if (kr.leben > 0) {
-          kr.leben--;
-          kr.x += (Math.random() - 0.5) * 0.004;
-          g.strokeStyle = 'rgba(255,240,210,0.35)';
-          g.lineWidth = 1;
-          g.beginPath();
-          g.moveTo(kr.x * W, 0);
-          g.lineTo(kr.x * W + (Math.random() - 0.5) * 6, H);
-          g.stroke();
-        }
-      }
-      for (let i = 0; i < 3; i++) {
-        if (Math.random() < 0.4) {
-          g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.7)' : 'rgba(255,240,220,0.5)';
-          g.beginPath();
-          g.ellipse(Math.random() * W, Math.random() * H, 1 + Math.random() * 3, 1 + Math.random() * 2, Math.random() * 3, 0, Math.PI * 2);
-          g.fill();
-        }
-      }
-      const vig = g.createRadialGradient(W / 2, H / 2, m * 0.3, W / 2, H / 2, Math.hypot(W, H) * 0.6);
-      vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, 'rgba(0,0,0,0.75)');
-      g.fillStyle = vig;
-      g.fillRect(0, 0, W, H);
-
-      // Weißer Blitz beim Gong
-      if (t > LANDEN - 0.1) {
-        const f = Math.max(0, 1 - (t - (LANDEN - 0.1)) / 0.5);
-        g.fillStyle = `rgba(255,245,220,${f})`;
-        g.fillRect(0, 0, W, H);
-        canvas.style.opacity = String(Math.max(0, 1 - (t - LANDEN) / 0.6));
-      }
-
-      if (t >= DAUER) { beenden(); return; }
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(bild);
   });
 }
