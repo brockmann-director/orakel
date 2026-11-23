@@ -1,0 +1,16 @@
+{
+  "name": "Die Pfote der Wahrheit",
+  "short_name": "Pfote",
+  "description": "Frag die Winkekatze. Sie winkt. Sie weiß. Sie dängelt.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#070203",
+  "theme_color": "#070203",
+  "lang": "de",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
