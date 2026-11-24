@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Die Pfote der Wahrheit – 3D-Probe</title>
+  <meta name="theme-color" content="#070203">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="stil.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+  </script>
+</head>
+<body data-modus="schlafen">
+  <canvas id="buehne" aria-label="Die Winkekatze in 3D"></canvas>
+  <div id="erwachen" role="button" tabindex="0" aria-label="Die Pfote erwecken">
+    <h1>Die Pfote der Wahrheit</h1>
+    <p class="beruehren">3D-Probe · Berühren</p>
+    <p class="klein">Mit Ton</p>
+  </div>
+  <div id="unten"><p id="frage"></p><p id="hinweis"></p></div>
+  <p id="antwort-text" class="sr-only" aria-live="polite"></p>
+  <script type="module" src="js/probe3d.js"></script>
+</body>
+</html>

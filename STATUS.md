@@ -9,6 +9,13 @@ Winkekatzen-Orakel für die 27km-Kollegies. Frage laut stellen (oder iPhone sch�
 - Version A: kuratierte Antworten ohne KI, Test bis Ende der Woche. Danach Entscheidung über Version C (Claude + Fallback).
 - Statische Seite für GitHub Pages (Branch `main`, Root). Kein Build-Schritt.
 
+## Fassung 3 (Probe, 2026-11-24)
+- Jan: Video sieht gut aus, bleibt aber „nur 2D“. Probe in echtem 3D: `probe3d.html` (+ `js/szene3d.js`, `js/probe3d.js`).
+- Katze = `assets/3d/katze.glb` (Hunyuan3D v3 aus Jans freigestelltem Higgsfield-Bild, in Blender auf 120k Dreiecke reduziert, Texturen 2k JPEG, 5 MB). Hintergrund `assets/3d/tal.jpg` = Jans Tal ohne Katze (GPT Image 2.6), auf einen Zylinder gezogen, abendlich gegradet.
+- Pfote: Gewicht je Ecke aus der Lage (Arm auf +x), Drehung um den Ellbogen im Vertex-Shader (`MODELL.pfote`). Portal: in die Keramik gemalt (Shader im Katzen-Material, Maske aus Lage, Nebel mit Tiefen-Verschiebung, Antwort aus `schreibeAufLeinwand`).
+- Glanzlichter werden auf 12 begrenzt (sonst Half-Float-Überlauf → Bloom-Quadrate).
+- Test: `probe3d.html?test`, `&modus=antwort&stehen`, `&blick=0.2`, `&film` (feste 30 fps, `window.__bild()`).
+
 ## Aufbau
 - `index.html`, `stil.css`, `manifest.webmanifest`
 - `js/main.js` – Ablauf (schlafen → ident → ruhe → lauschen → ritual → antwort → wechsel), Fassungen hoch/quer mit Portal-Lage, Wendepunkten und Wellen der Pfote; `planeHalt()` lässt die Pfote mitten im Winken abbremsen und unten stehen.

@@ -133,6 +133,65 @@ const fragment = /* glsl */ `
   }
 `;
 
+// Antwort in eine 1024er-Leinwand setzen: Rot = Schrift, Grün = Glut (rund, passend fürs Portal).
+export function schreibeAufLeinwand(textCanvas, text) {
+  const g = textCanvas.getContext('2d');
+  g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, 1024, 1024);
+  const radius = 365;
+  // Lange Adressen dürfen nach dem @ umbrechen (das Wort danach hängt ohne Leerzeichen an).
+  const woerter = text.split(/\s+/).flatMap((w) => (w.includes('@') && w.length > 12 ? [w.slice(0, w.indexOf('@') + 1), `\u2060${w.slice(w.indexOf('@') + 1)}`] : [w]));
+  const fuege = (a, b) => (b.startsWith('\u2060') ? a + b.slice(1) : `${a} ${b}`);
+  const roh = (w) => (w.startsWith('\u2060') ? w.slice(1) : w);
+  let passend = null;
+  for (let gr = 132; gr >= 44; gr -= 4) {
+    g.font = `700 ${gr}px ${SCHRIFT}`;
+    const zeilenH = gr * 1.14;
+    for (let n = 1; n <= 8; n++) {
+      const hoehe = n * zeilenH;
+      if (hoehe > radius * 1.7) break;
+      const zeilen = [];
+      let wi = 0;
+      let ok = true;
+      for (let i = 0; i < n && wi < woerter.length; i++) {
+        const y = -hoehe / 2 + zeilenH * (i + 0.5);
+        const rand = Math.max(Math.abs(y - zeilenH * 0.5), Math.abs(y + zeilenH * 0.5));
+        const breite = 2 * Math.sqrt(Math.max(radius * radius - rand * rand, 0)) * 0.9;
+        let zeile = roh(woerter[wi]);
+        if (g.measureText(zeile).width > breite) { ok = false; break; }
+        wi++;
+        while (wi < woerter.length && g.measureText(fuege(zeile, woerter[wi])).width <= breite) {
+          zeile = fuege(zeile, woerter[wi]);
+          wi++;
+        }
+        zeilen.push(zeile);
+      }
+      if (ok && wi >= woerter.length) { passend = { gr, zeilen, zeilenH }; break; }
+    }
+    if (passend) break;
+  }
+  if (!passend) passend = { gr: 44, zeilen: [text], zeilenH: 50 };
+  g.font = `700 ${passend.gr}px ${SCHRIFT}`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  const start = 512 - (passend.zeilen.length * passend.zeilenH) / 2 + passend.zeilenH / 2;
+  const zeilen = passend.zeilen.map((z, i) => [z, start + i * passend.zeilenH + passend.gr * 0.04]);
+  // Glut: nur der Schatten, Schrift selbst liegt außerhalb
+  g.fillStyle = '#000';
+  g.shadowColor = 'rgb(0,255,0)';
+  g.shadowBlur = passend.gr * 0.55;
+  g.shadowOffsetX = 2048;
+  zeilen.forEach(([z, y]) => g.fillText(z, 512 - 2048, y));
+  g.shadowColor = 'rgba(0,0,0,0)';
+  g.shadowBlur = 0;
+  g.shadowOffsetX = 0;
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = 'rgb(255,0,0)';
+  zeilen.forEach(([z, y]) => g.fillText(z, 512, y));
+  g.globalCompositeOperation = 'source-over';
+  }
+
 export function baueBuehne(renderer) {
   const textCanvas = document.createElement('canvas');
   textCanvas.width = textCanvas.height = 1024;
@@ -202,61 +261,7 @@ export function baueBuehne(renderer) {
 
   // Text in zwei Kanälen: Rot = Schrift, Grün = Glut drumherum.
   function schreibe(text) {
-    const g = textCanvas.getContext('2d');
-    g.globalCompositeOperation = 'source-over';
-    g.fillStyle = '#000';
-    g.fillRect(0, 0, 1024, 1024);
-    const radius = 365;
-    // Lange Adressen dürfen nach dem @ umbrechen (das Wort danach hängt ohne Leerzeichen an).
-    const woerter = text.split(/\s+/).flatMap((w) => (w.includes('@') && w.length > 12 ? [w.slice(0, w.indexOf('@') + 1), `\u2060${w.slice(w.indexOf('@') + 1)}`] : [w]));
-    const fuege = (a, b) => (b.startsWith('\u2060') ? a + b.slice(1) : `${a} ${b}`);
-    const roh = (w) => (w.startsWith('\u2060') ? w.slice(1) : w);
-    let passend = null;
-    for (let gr = 132; gr >= 44; gr -= 4) {
-      g.font = `700 ${gr}px ${SCHRIFT}`;
-      const zeilenH = gr * 1.14;
-      for (let n = 1; n <= 8; n++) {
-        const hoehe = n * zeilenH;
-        if (hoehe > radius * 1.7) break;
-        const zeilen = [];
-        let wi = 0;
-        let ok = true;
-        for (let i = 0; i < n && wi < woerter.length; i++) {
-          const y = -hoehe / 2 + zeilenH * (i + 0.5);
-          const rand = Math.max(Math.abs(y - zeilenH * 0.5), Math.abs(y + zeilenH * 0.5));
-          const breite = 2 * Math.sqrt(Math.max(radius * radius - rand * rand, 0)) * 0.9;
-          let zeile = roh(woerter[wi]);
-          if (g.measureText(zeile).width > breite) { ok = false; break; }
-          wi++;
-          while (wi < woerter.length && g.measureText(fuege(zeile, woerter[wi])).width <= breite) {
-            zeile = fuege(zeile, woerter[wi]);
-            wi++;
-          }
-          zeilen.push(zeile);
-        }
-        if (ok && wi >= woerter.length) { passend = { gr, zeilen, zeilenH }; break; }
-      }
-      if (passend) break;
-    }
-    if (!passend) passend = { gr: 44, zeilen: [text], zeilenH: 50 };
-    g.font = `700 ${passend.gr}px ${SCHRIFT}`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    const start = 512 - (passend.zeilen.length * passend.zeilenH) / 2 + passend.zeilenH / 2;
-    const zeilen = passend.zeilen.map((z, i) => [z, start + i * passend.zeilenH + passend.gr * 0.04]);
-    // Glut: nur der Schatten, Schrift selbst liegt außerhalb
-    g.fillStyle = '#000';
-    g.shadowColor = 'rgb(0,255,0)';
-    g.shadowBlur = passend.gr * 0.55;
-    g.shadowOffsetX = 2048;
-    zeilen.forEach(([z, y]) => g.fillText(z, 512 - 2048, y));
-    g.shadowColor = 'rgba(0,0,0,0)';
-    g.shadowBlur = 0;
-    g.shadowOffsetX = 0;
-    g.globalCompositeOperation = 'lighter';
-    g.fillStyle = 'rgb(255,0,0)';
-    zeilen.forEach(([z, y]) => g.fillText(z, 512, y));
-    g.globalCompositeOperation = 'source-over';
+    schreibeAufLeinwand(textCanvas, text);
     textTex.needsUpdate = true;
   }
 
