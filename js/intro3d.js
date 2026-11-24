@@ -219,12 +219,14 @@ export async function spieleIntro3D(renderer, { ueberspringbar = false, klang = 
         roughnessFactor = mix(0.42, 0.85, smoothstep(0.05, 0.75, ifbm(vObj.xy * 9.0)));`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         diffuseColor.rgb *= mix(0.45, 1.0, smoothstep(-0.25, 0.0, vObj.y));`)
-      // Licht bricht durch die Risse: wandert von unten nach oben, flackert
+      // Lava bricht durch die Risse: wandert von unten nach oben, flackert
       .replace('#include <emissivemap_fragment>', `
         vec3 rissFarbe = texture2D(emissiveMap, vEmissiveMapUv).rgb;
         float front = smoothstep(uRiss * 1.4 - 0.35, uRiss * 1.4 - 0.55, vObj.y + 0.2 + (ifbm(vObj.xy * 6.0) - 0.5) * 0.3);
         float flackern = 0.8 + 0.2 * sin(uZeit * 31.0 + vObj.x * 20.0);
-        totalEmissiveRadiance = vec3(0.62, 0.92, 1.0) * rissFarbe.r * front * uRiss * 3.2 * flackern;`)
+        // glüht wie Lava: innen gelb-orange, außen tiefrot
+        vec3 lava = mix(vec3(1.0, 0.12, 0.02), vec3(1.0, 0.55, 0.12), smoothstep(0.55, 1.0, rissFarbe.r));
+        totalEmissiveRadiance = lava * rissFarbe.r * front * uRiss * 3.2 * flackern;`)
       .replace('#include <dithering_fragment>', '#include <dithering_fragment>\ngl_FragColor.rgb = min(gl_FragColor.rgb, vec3(12.0));');
   };
   const logo = new THREE.Mesh(logoGeo, logoMat);
@@ -233,8 +235,8 @@ export async function spieleIntro3D(renderer, { ueberspringbar = false, klang = 
   logo.position.set(0, logoHoehe / 2 - 0.35, LOGO_Z);
   szene.add(logo);
   // Licht aus den Rissen strahlt auf Wasser und Umgebung
-  const rissLicht = new THREE.PointLight(0x9fe8ff, 0, 40, 1.4);
-  rissLicht.position.set(0, logoHoehe * 0.45, LOGO_Z + 3);
+  const rissLicht = new THREE.PointLight(0xff5a1e, 0, 40, 1.4);
+  rissLicht.position.set(0, 0.4, LOGO_Z + 2.5); // Glut spiegelt sich unten im Wasser
   szene.add(rissLicht);
 
   // Spiegelungen auf dem nassen Stein
@@ -466,7 +468,7 @@ export async function spieleIntro3D(renderer, { ueberspringbar = false, klang = 
       const riss = THREE.MathUtils.smoothstep(t, 3.6, 6.2);
       rissU.uRiss.value = riss;
       logoMat.emissiveIntensity = 1;
-      rissLicht.intensity = riss * riss * 50;
+      rissLicht.intensity = riss * riss * 9;
 
       // Kamera: gleitet tief über die Lagune auf das Relikt zu
       const k = THREE.MathUtils.smootherstep(t / INTRO_DAUER, 0, 1);

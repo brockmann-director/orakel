@@ -30,8 +30,9 @@ try { await document.fonts.load('700 60px "Cinzel"'); } catch { /* egal */ }
 document.body.classList.add('bereit');
 $('#erwachen .beruehren').textContent = 'Berühren, um sie zu erwecken';
 
+let TEMPO_FEST = false; // Test: Pfote steht (?test&phase=3.14&fest)
 const ANTWORT_DAUER = 5.5; // so lange steht die Antwort, dann fährt die Kamera zurück
-const AMPLITUDE = 0.5; // rad, so weit kippt die Pfote nach vorn
+const AMPLITUDE = 0.42; // rad, so weit kippt die Pfote nach vorn
 const TEMPO = 2 * Math.PI * 0.5; // eine Welle in 2 s
 const MOENCHE_RUHE = 0.3;
 const MOENCHE_RITUAL = 0.7;
@@ -188,7 +189,7 @@ function schritt() {
     case 'schlafen':
     case 'ruhe':
       z.hell = naeher(z.hell, 1, dt, 1.2);
-      z.omega = naeher(z.omega, TEMPO, dt, 1.5);
+      if (!TEMPO_FEST) z.omega = naeher(z.omega, TEMPO, dt, 1.5);
       z.glimmen = naeher(z.glimmen, 0.25 + 0.12 * Math.sin(zeit * 0.9), dt, 2);
       z.wirbel = naeher(z.wirbel, 0, dt, 1);
       z.dunkel = naeher(z.dunkel, 0, dt, 1.5);
@@ -279,7 +280,7 @@ if (TEST) {
   geheZu('ruhe');
   z.hell = 1;
   z.zielX = z.blickX = Number(params.get('blick') || 0);
-  if (params.get('phase')) z.phase = Number(params.get('phase'));
+  if (params.get('phase')) { z.phase = Number(params.get('phase')); if (params.has('fest')) { z.omega = 0; TEMPO_FEST = true; } }
   const m = params.get('modus');
   if (m === 'antwort') {
     ritual(params.get('frage') || ''); z.t = 5.5; z.flug = z.vonFlug = 1; z.dunkel = 1; z.auftauchen = 1; z.phase = z.halt.ziel; z.halt = null; z.omega = 0;

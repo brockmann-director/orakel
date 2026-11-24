@@ -16,7 +16,7 @@ const MODELL = {
   portal: { c: new THREE.Vector3(-0.0226, 0.315, 0.2), r: 0.112, n: new THREE.Vector3(0.06, 0.05, 1).normalize() },
   // Pfote: erhobener Arm auf +x, Drehpunkt am Ellbogen
   // Trennlinie zwischen Kopf und Arm in der Vorderansicht (Spalt in der Silhouette), y → x
-  pfote: { spalt: [[0.5, 0.145], [0.6, 0.17], [0.68, 0.176], [0.74, 0.168], [0.8, 0.152], [0.95, 0.15]], y0: 0.46, y1: 0.54, oben: 0.8, dreh: new THREE.Vector3(0.22, 0.48, -0.01) },
+  pfote: { spalt: [[0.5, 0.145], [0.6, 0.17], [0.68, 0.176], [0.74, 0.168], [0.8, 0.152], [0.95, 0.15]], y0: 0.47, y1: 0.53, oben: 0.8, dreh: new THREE.Vector3(0.22, 0.5, 0.08) },
 };
 const GROESSE = 12; // Die Katze ist zwölf Meter hoch.
 const S = GROESSE / MODELL.hoehe;
@@ -124,7 +124,7 @@ export async function baueSzene3D(renderer) {
   const himmelLicht = new THREE.HemisphereLight(0x6d9aa3, 0x05080a, 0.12);
   szene.add(himmelLicht);
   // Lichtkegel von oben (wie durch eine Öffnung im Blätterdach)
-  const kegelLicht = new THREE.SpotLight(0xd4f4ff, 2600, 80, 0.2, 0.75, 1.5);
+  const kegelLicht = new THREE.SpotLight(0xd4f4ff, 1400, 80, 0.2, 0.75, 1.5);
   kegelLicht.position.set(1.2, 46, 3.5);
   kegelLicht.target.position.set(0, 4, 0.5);
   szene.add(kegelLicht, kegelLicht.target);
@@ -132,10 +132,10 @@ export async function baueSzene3D(renderer) {
   const schluessel = new THREE.DirectionalLight(0x9fc6d2, 0.35);
   schluessel.position.set(-8, 10, 14);
   szene.add(schluessel);
-  const kante = new THREE.DirectionalLight(0x8fe6ff, 3.2);
+  const kante = new THREE.DirectionalLight(0x8fe6ff, 2.0);
   kante.position.set(9, 12, -14);
   szene.add(kante);
-  const kante2 = new THREE.DirectionalLight(0x6fbfd0, 1.6);
+  const kante2 = new THREE.DirectionalLight(0x6fbfd0, 1.0);
   kante2.position.set(-11, 6, -10);
   szene.add(kante2);
   // warmer Akzent: eine Laterne halb hinter der Katze
@@ -196,7 +196,7 @@ export async function baueSzene3D(renderer) {
     metalnessMap: alt.metalnessMap,
     roughness: 0.55,
     metalness: 1.0,
-    clearcoat: 1.0,
+    clearcoat: 0.8,
     clearcoatRoughness: 0.1,
     envMapIntensity: 1.0,
   });
