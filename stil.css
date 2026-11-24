@@ -99,8 +99,8 @@ html, body {
 #ton .strich { display: none; }
 #ton.aus .strich { display: inline; }
 #ton.aus .wellen { display: none; }
-#teilen { opacity: 0; pointer-events: none; }
-body[data-modus="antwort"] #teilen { opacity: 1; pointer-events: auto; }
+#oben #teilen { opacity: 0; pointer-events: none; }
+body[data-modus="antwort"] #oben #teilen { opacity: .75; pointer-events: auto; }
 body[data-modus="schlafen"] #oben, body[data-modus="ident"] #oben, body[data-modus="ritual"] #oben { opacity: 0; pointer-events: none; }
 
 #unten {
@@ -134,3 +134,7 @@ body[data-modus="lauschen"] #hinweis { animation: atmen 1.6s ease-in-out infinit
 @media (prefers-reduced-motion: reduce) { #erwachen h1, #erwachen .beruehren { animation: none; opacity: 1; } }
 
 .nur-vorleser { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* weißer Blitz zwischen Intro und Spiel */
+#blitz { position: fixed; inset: 0; z-index: 5; background: #fbf8f2; opacity: 0; pointer-events: none; }
+body:not(.bereit) #erwachen { cursor: progress; }

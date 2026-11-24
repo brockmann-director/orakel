@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Die Pfote der Wahrheit – Video-Fassung</title>
+  <meta name="description" content="Frag die Winkekatze. Sie winkt. Sie weiß. Sie dängelt.">
+  <meta name="theme-color" content="#070203">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pfote">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="stil.css">
+  <link rel="preload" href="assets/katze.jpg" as="image" crossorigin="anonymous" media="(max-aspect-ratio: 115/100)">
+  <link rel="preload" href="assets/katze-quer.jpg" as="image" crossorigin="anonymous" media="(min-aspect-ratio: 115/100)">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+  </script>
+</head>
+<body data-modus="schlafen">
+  <canvas id="buehne" aria-label="Die Winkekatze"></canvas>
+  <div id="erwachen" role="button" tabindex="0" aria-label="Die Pfote erwecken">
+    <h1>Die Pfote der Wahrheit</h1>
+    <p class="beruehren">Berühren, um sie zu erwecken</p>
+    <p class="klein">Mit Ton</p>
+  </div>
+
+  <div id="oben">
+    <button id="teilen" type="button" title="Antwort teilen" aria-label="Antwort teilen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+    </button>
+    <button id="ton" type="button" title="Ton aus" aria-label="Ton an oder aus">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" /><path class="wellen" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /><path class="strich" d="M16 9l6 6M22 9l-6 6" /></svg>
+    </button>
+  </div>
+
+  <div id="unten">
+    <div id="frage"></div>
+    <div id="hinweis"></div>
+  </div>
+  <div id="antwort-text" class="nur-vorleser" aria-live="polite"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

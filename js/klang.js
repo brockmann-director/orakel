@@ -1,13 +1,13 @@
 // Ton: generierte Geräusche (assets/klang/*.mp3) über Web Audio, mit Hall und Mischpult.
 
-const NAMEN = ['ident', 'atmo', 'knarzen', 'gloeckchen', 'gong', 'aufsteigen', 'sog', 'tippen'];
+const NAMEN = ['ident', 'atmo', 'knarzen', 'gloeckchen', 'gong', 'aufsteigen', 'sog', 'tippen', 'moench', 'regen', 'donner1', 'donner2', 'stinger', 'chor'];
 const roh = {};
 const puffer = {};
 let ctx = null;
 let master = null;
 let hall = null;
 let stumm = false;
-let atmo = null;
+const betten = {};
 
 try { stumm = localStorage.getItem('pfote-stumm') === '1'; } catch { /* egal */ }
 
@@ -113,30 +113,44 @@ export async function spiele(name, { laut = 1, rate = 1, nass = 0.25, verz = 0, 
   };
 }
 
-// Atmosphäre: Wind im Tal, endlos mit Überblendung.
-export async function atmoStart(laut = 0.5) {
-  if (!ctx || atmo) return;
-  const buf = await dekodiere('atmo');
+// Endlose Klangbetten (Wind, Mönche, Regen): überblendete Wiederholung derselben Datei.
+export async function bettStart(name, laut = 0.5, { ueber = 2.5, tiefpass = 5200, nass = 0.1, ein = ueber } = {}) {
+  if (!ctx || betten[name]) return;
+  const buf = await dekodiere(name);
   if (!buf) return;
-  atmo = { laut, aktiv: true, teile: [] };
-  const ueber = 2.5;
+  const b = { laut, aktiv: true, teile: [] };
+  betten[name] = b;
+  let erstes = true;
   const naechstes = async () => {
-    if (!atmo || !atmo.aktiv) return;
-    const teil = await spiele('atmo', { laut: atmo.laut, ein: ueber, nass: 0.1, tiefpass: 5200 });
+    if (!b.aktiv) return;
+    const teil = await spiele(name, { laut: b.laut, ein: erstes ? ein : ueber, nass, tiefpass });
+    erstes = false;
     if (!teil) return;
-    atmo.teile.push(teil);
-    if (atmo.teile.length > 2) atmo.teile.shift();
+    b.teile.push(teil);
+    if (b.teile.length > 2) b.teile.shift();
     setTimeout(() => teil.stop(ueber), (buf.duration - ueber) * 1000);
-    atmo.timer = setTimeout(naechstes, (buf.duration - ueber) * 1000);
+    b.timer = setTimeout(naechstes, (buf.duration - ueber) * 1000);
   };
   naechstes();
 }
-export function atmoLautstaerke(laut, dauer = 1.5) {
-  if (!atmo || !ctx) return;
-  atmo.laut = laut;
+export function bettLautstaerke(name, laut, dauer = 1.5) {
+  const b = betten[name];
+  if (!b || !ctx) return;
+  b.laut = laut;
   const j = ctx.currentTime;
-  atmo.teile.forEach((t) => { t.gain.gain.cancelScheduledValues(j); t.gain.gain.setValueAtTime(t.gain.gain.value, j); t.gain.gain.linearRampToValueAtTime(laut, j + dauer); });
+  b.teile.forEach((t) => { t.gain.gain.cancelScheduledValues(j); t.gain.gain.setValueAtTime(t.gain.gain.value, j); t.gain.gain.linearRampToValueAtTime(laut, j + dauer); });
 }
+export function bettStop(name, dauer = 1.5) {
+  const b = betten[name];
+  if (!b) return;
+  b.aktiv = false;
+  clearTimeout(b.timer);
+  b.teile.forEach((t) => t.stop(dauer));
+  delete betten[name];
+}
+// Wind im Tal (alter Name)
+export const atmoStart = (laut = 0.5) => bettStart('atmo', laut);
+export const atmoLautstaerke = (laut, dauer = 1.5) => bettLautstaerke('atmo', laut, dauer);
 
 export const ident = () => spiele('ident', { laut: 1, nass: 0.2 });
 export const tippen = () => spiele('tippen', { laut: 0.55, nass: 0.4 });
@@ -146,3 +160,6 @@ export const aufsteigen = () => spiele('aufsteigen', { laut: 0.6, nass: 0.4, ein
 export const sog = () => spiele('sog', { laut: 0.8, nass: 0.3, ein: 1.2 });
 // Knarzen der Pfote; langsamer = tiefer und gedehnter.
 export const knarzen = (tempo = 1, laut = 0.5) => spiele('knarzen', { laut, rate: Math.max(0.5, Math.min(1.15, tempo)), nass: 0.3 });
+export const donner = (n = 1, laut = 1) => spiele(n === 2 ? 'donner2' : 'donner1', { laut, nass: 0.35 });
+export const stinger = () => spiele('stinger', { laut: 1, nass: 0.15 });
+export const chor = (laut = 0.5) => spiele('chor', { laut, nass: 0.4, ein: 1.5 });

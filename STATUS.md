@@ -2,32 +2,20 @@
 
 Winkekatzen-Orakel für die 27km-Kollegies. Frage laut stellen (oder iPhone schütteln): Die riesige Porzellankatze winkt immer langsamer, die Pfote bleibt unten stehen, die Kamera fährt ins Bauch-Portal, Gong, und die Antwort steigt aus dem violetten Nebel auf.
 
-## Stand (2026-11-23, Fassung 2)
-- Fassung 1 (Echtzeit-3D-Katze aus Blender, Kung-Fu-Intro) hat Jan verworfen: zu billig. Fassung 2 ist fotorealistisch.
-- Katze = Video, aus Jans Higgsfield-Bild animiert (Kling 3.0 pro, Start- und Endbild gleich → nahtloser Loop, 6 s, winkt zweimal). Hochkant `assets/katze.mp4` fürs Handy, quer `assets/katze-quer.mp4` für den Rechner (Bild per Outpaint erweitert, eigener Kling-Lauf mit deutlichem Winken, abends gegradet; ab Seitenverhältnis 1,15 bildfüllend).
-- Alles Bewegte darüber ist ein Shader (`js/buehne.js`): Bild bildfüllend, Portal-Nebel, aufsteigende Antwort (Text in Rot = Schrift, Grün = Glut), Licht auf der Keramik, Kamerafahrt (Zoom + Schwenk aufs Portal), Bodennebel, Korn.
+## Stand (2026-11-24, Fassung 3 = Hauptseite)
+- `index.html` ist jetzt die echte 3D-Fassung (`js/spiel3d.js`). Die Video-Fassung 2 liegt weiter unter `video.html` (`js/main.js`). `probe3d.html` leitet auf die Hauptseite um.
+- Ablauf: Berühren → Gewitter-Intro mit 27km-Logo (`js/intro3d.js`, 6,6 s, beim ersten Mal nicht überspringbar, danach per Tippen) → weißer Blitz → Katze winkt im Tal, Mönchsgesang + Wind. Frage laut stellen (Tippen) oder schütteln → Pfote bremst und bleibt unten, Kamera fliegt ins Portal, Chor, Gong, Antwort steigt auf, steht 5,5 s, dann zurück in die Totale.
+- Fassung 1 (Blender-Katze, Kung-Fu-Intro) hat Jan verworfen. Fassung 2 (Video-Katze aus Kling) fand er gut, aber „nur 2D“.
 - Version A: kuratierte Antworten ohne KI, Test bis Ende der Woche. Danach Entscheidung über Version C (Claude + Fallback).
 - Statische Seite für GitHub Pages (Branch `main`, Root). Kein Build-Schritt.
 
-## Fassung 3 (Probe, 2026-11-24)
-- Jan: Video sieht gut aus, bleibt aber „nur 2D“. Probe in echtem 3D: `probe3d.html` (+ `js/szene3d.js`, `js/probe3d.js`).
+## 3D-Szene
 - Katze = `assets/3d/katze.glb` (Hunyuan3D v3 aus Jans freigestelltem Higgsfield-Bild, in Blender auf 120k Dreiecke reduziert, Texturen 2k JPEG, 5 MB). Hintergrund `assets/3d/tal.jpg` = Jans Tal ohne Katze (GPT Image 2.6), auf einen Zylinder gezogen, abendlich gegradet.
-- Pfote: Gewicht je Ecke aus der Lage (Arm auf +x), Drehung um den Ellbogen im Vertex-Shader (`MODELL.pfote`). Portal: in die Keramik gemalt (Shader im Katzen-Material, Maske aus Lage, Nebel mit Tiefen-Verschiebung, Antwort aus `schreibeAufLeinwand`).
-- Glanzlichter werden auf 12 begrenzt (sonst Half-Float-Überlauf → Bloom-Quadrate).
-- Test: `probe3d.html?test`, `&modus=antwort&stehen`, `&blick=0.2`, `&film` (feste 30 fps, `window.__bild()`).
-
-## Aufbau
-- `index.html`, `stil.css`, `manifest.webmanifest`
-- `js/main.js` – Ablauf (schlafen → ident → ruhe → lauschen → ritual → antwort → wechsel), Fassungen hoch/quer mit Portal-Lage, Wendepunkten und Wellen der Pfote; `planeHalt()` lässt die Pfote mitten im Winken abbremsen und unten stehen.
-- `js/intro.js` – Studio-Ident (3,9 s): Licht fährt über das 27km-Logo (`assets/27km-logo-2k.png`, aus Jans EPS) aus gebürstetem Metall. Beim ersten Mal nicht überspringbar.
-- `js/buehne.js` – Bühnen-Shader und Antworttext
-- `js/klang.js` – generierte Geräusche aus `assets/klang/` (Higgsfield Mirelo SFX): ident, atmo (Wind, endlos überblendet), knarzen (an den Wendepunkten der Pfote, langsamer = tiefer), gloeckchen, gong, aufsteigen, sog, tippen
-- `js/eingabe.js` – Schütteln (iOS fragt nach Bewegung), Spracherkennung de-DE
-- `js/orakel.js` – Auswahl der Antwort (Signalwörter → Themen, Stimmungs-Gewichte, keine Wiederholung der letzten 14)
-- `js/teilen.js` – Teilen-Bild 1080×1350
-- `data/sprueche.json` – **hier kommen neue Sprüche rein** (`original`, `stimmung` ja/vielleicht/nein/rat, `themen`, `fassungen`)
-- `tools/video.py` – neues Video aufbereiten: `python3 tools/video.py roh.mp4` schreibt `assets/katze.mp4` + `.jpg` und misst die Wendepunkte der Pfote (für `FASSUNGEN` in main.js). Quer: `--ziel katze-quer --breite 1920 --x0 0.53 --x1 0.68` plus Grade (`--grade "eq=brightness=-0.07:contrast=1.1:saturation=0.85:gamma=0.88,colorbalance=rs=-0.04:bs=0.05:rm=-0.03:bm=0.03:rh=-0.02:bh=0.02,vignette=PI/4.5"`).
-- `vendor/` – three.js 0.170.0 (MIT)
+- Pfote (`MODELL.pfote` in `js/szene3d.js`): Gewicht je Ecke; die Grenze zwischen Arm und Körper folgt der Spalte in der Silhouette (`spalt`, Höhe → x), sonst verzerrt der Arm. Drehung um den Ellbogen im Vertex-Shader, Ausschlag 0,5 rad.
+- Portal: in die Keramik gemalt (Shader im Katzen-Material, Maske aus Lage, Nebel mit Tiefen-Verschiebung, Antwort aus `schreibeAufLeinwand`). Glanzlichter auf 12 begrenzt (sonst Half-Float-Überlauf → Bloom-Quadrate).
+- Intro (`js/intro3d.js`): Nachtversion desselben Tals, Logo aus `assets/3d/logo27km.json` (Umrisse aus `assets/27km-logo-2k.png` per potrace, normiert) extrudiert als Metall, 3 Blitze (Bänder + Licht auf Bergen und Logo), Regen als Linien, goldener Glanz wandert als Band über die Kanten (Shader, kein Punktlicht: das gab einen Bloom-Fleck), Schlussblitz → Weiß, das im Spiel abklingt (`#blitz`). Hochkant bleibt die Kamera, das Logo wird kleiner.
+- Ton: Mönche, Regen, Donner, Stinger, Chor von Epidemic Sound (über Higgsfield `download_sound_effect`; der Proxy sperrt pdn.epidemicsound.com, daher `media_import_url` und Download von cloudfront). Betten (`bettStart/bettLautstaerke/bettStop` in `js/klang.js`) laufen endlos überblendet.
+- Schütteln: iOS fragt beim ersten Berühren nach „Bewegung & Ausrichtung“ (beide Anfragen in derselben Geste). Zwei Ausschläge > 11 m/s² innerhalb 0,9 s. Wer einmal „Nicht erlauben“ gedrückt hat: Safari-Einstellungen → Website-Daten der Seite löschen.
 
 ## Regeln (Jan)
 - Insider-Witze nie erklären, nur kurze Orakel-Einleitung. Wortlaut, Wortspiele und Sarkasmus erhalten.
@@ -37,7 +25,8 @@ Winkekatzen-Orakel für die 27km-Kollegies. Frage laut stellen (oder iPhone sch�
 
 ## Testen
 - `python3 -m http.server` im Repo, dann `http://localhost:8000/`
-- `?test` überspringt Start + Ident, `?test&modus=antwort&frage=…` zeigt direkt eine Antwort (fährt nach 5,5 s von allein zurück, `&stehen` hält sie fest), `?test&modus=ritual&t=2` springt ins Ritual, `?standbild` ohne Video.
+- 3D: `?test` überspringt Start + Intro, `?ohneintro` nur das Intro, `&modus=antwort&stehen`, `&blick=0.2`, `?film` (feste 30 fps, `window.__bild()`).
+- Video-Fassung (`video.html`): `?test` überspringt Start + Ident, `?test&modus=antwort&frage=…` zeigt direkt eine Antwort (fährt nach 5,5 s von allein zurück, `&stehen` hält sie fest), `?test&modus=ritual&t=2` springt ins Ritual, `?standbild` ohne Video.
 - MiniMax-Video hat Jans Bild zweimal fälschlich als NSFW gefiltert; Kling geht.
 
 ## Offen

@@ -16,8 +16,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="stil.css">
-  <link rel="preload" href="assets/katze.jpg" as="image" crossorigin="anonymous" media="(max-aspect-ratio: 115/100)">
-  <link rel="preload" href="assets/katze-quer.jpg" as="image" crossorigin="anonymous" media="(min-aspect-ratio: 115/100)">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
   </script>
@@ -26,7 +24,7 @@
   <canvas id="buehne" aria-label="Die Winkekatze"></canvas>
   <div id="erwachen" role="button" tabindex="0" aria-label="Die Pfote erwecken">
     <h1>Die Pfote der Wahrheit</h1>
-    <p class="beruehren">Berühren, um sie zu erwecken</p>
+    <p class="beruehren">Die Pfote erwacht …</p>
     <p class="klein">Mit Ton</p>
   </div>
 
@@ -43,8 +41,9 @@
     <div id="frage"></div>
     <div id="hinweis"></div>
   </div>
+  <div id="blitz" aria-hidden="true"></div>
   <div id="antwort-text" class="nur-vorleser" aria-live="polite"></div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/spiel3d.js"></script>
 </body>
 </html>

@@ -15,7 +15,8 @@ const MODELL = {
   hoehe: 0.884,
   portal: { c: new THREE.Vector3(-0.0226, 0.315, 0.2), r: 0.112, n: new THREE.Vector3(0.06, 0.05, 1).normalize() },
   // Pfote: erhobener Arm auf +x, Drehpunkt am Ellbogen
-  pfote: { x0: 0.2, x1: 0.232, y0: 0.44, y1: 0.56, dreh: new THREE.Vector3(0.24, 0.47, -0.02) },
+  // Trennlinie zwischen Kopf und Arm in der Vorderansicht (Spalt in der Silhouette), y → x
+  pfote: { spalt: [[0.5, 0.145], [0.6, 0.17], [0.68, 0.176], [0.74, 0.168], [0.8, 0.152], [0.95, 0.15]], y0: 0.46, y1: 0.54, oben: 0.8, dreh: new THREE.Vector3(0.22, 0.48, -0.01) },
 };
 const GROESSE = 12; // Die Katze ist zwölf Meter hoch.
 const S = GROESSE / MODELL.hoehe;
@@ -145,7 +146,17 @@ export async function baueSzene3D(renderer) {
   const gewicht = new Float32Array(pos.count);
   const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const P = MODELL.pfote;
-  for (let i = 0; i < pos.count; i++) gewicht[i] = sm(P.x0, P.x1, pos.getX(i)) * sm(P.y0, P.y1, pos.getY(i));
+  const spaltX = (y) => {
+    const t = P.spalt;
+    if (y <= t[0][0]) return t[0][1];
+    for (let i = 1; i < t.length; i++) if (y <= t[i][0]) { const [y0, x0] = t[i - 1]; const [y1, x1] = t[i]; return x0 + ((x1 - x0) * (y - y0)) / (y1 - y0); }
+    return t[t.length - 1][1];
+  };
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i); const y = pos.getY(i); const g = spaltX(y);
+    // rechts vom Spalt, oberhalb des Ellbogens: starr mitdrehen; am Ellbogen weich biegen
+    gewicht[i] = sm(g - 0.006, g + 0.006, x) * sm(P.y0, P.y1, y) * (1 - sm(P.oben, P.oben + 0.01, y));
+  }
   geo.setAttribute('aPfote', new THREE.BufferAttribute(gewicht, 1));
 
   const alt = mesh.material;
