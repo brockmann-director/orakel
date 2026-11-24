@@ -20,6 +20,7 @@ const MODELL = {
 };
 const GROESSE = 12; // Die Katze ist zwölf Meter hoch.
 const S = GROESSE / MODELL.hoehe;
+const SOCKEL = 0.68; // die Katze steht auf einem Steinsockel im Wasser
 
 const NOISE = /* glsl */ `
   float p3hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
@@ -45,7 +46,7 @@ export async function baueSzene3D(renderer) {
   const zeitU = { value: 0 };
 
   // ------------------------------------------------------------ Tal (Hintergrund)
-  const tal = await new THREE.TextureLoader().loadAsync('assets/3d/tal.jpg');
+  const tal = await new THREE.TextureLoader().loadAsync('assets/3d/tempel.jpg');
   tal.colorSpace = THREE.SRGBColorSpace;
   tal.anisotropy = 4;
   const talBreite = tal.image.width / tal.image.height;
@@ -64,15 +65,14 @@ export async function baueSzene3D(renderer) {
       void main() {
         vec2 uv = vec2(1.0 - vUv.x, vUv.y);
         // leicht unscharf (Tiefenschärfe) und abendlich gegradet
-        vec3 c = texture2D(uTal, uv, 1.2).rgb;
+        vec3 c = texture2D(uTal, uv, 0.6).rgb;
         c = pow(c, vec3(2.2));
         float l = dot(c, vec3(0.299, 0.587, 0.114));
-        c = mix(vec3(l), c, 0.78);
-        c *= vec3(0.78, 0.84, 1.02) * 0.62;
-        // Dunst wandert durchs Tal
+        c = mix(vec3(l), c, 0.85) * vec3(0.92, 1.0, 1.0) * 0.8;
+        // Dunst zieht langsam durchs Tal
         float n = p3fbm(vec2(uv.x * 4.0 + uZeit * 0.015, uv.y * 3.0));
-        c = mix(c, vec3(0.30, 0.31, 0.36), n * 0.18 * smoothstep(0.1, 0.6, uv.y));
-        c *= 1.0 - uDunkel * 0.55;
+        c += vec3(0.02, 0.05, 0.055) * n * smoothstep(0.2, 0.6, uv.y) * smoothstep(0.95, 0.6, uv.y);
+        c *= 1.0 - uDunkel * 0.6;
         gl_FragColor = vec4(c, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -81,7 +81,9 @@ export async function baueSzene3D(renderer) {
   // Gamma: Textur ist sRGB, wir rechnen linear über pow – also ohne automatische Umwandlung lesen
   tal.colorSpace = THREE.NoColorSpace;
   const talMesh = new THREE.Mesh(talGeo, talMat);
-  talMesh.position.set(0, talHoehe * 0.5 - 39, 0);
+  // Horizont der Platte (Anteil von unten) auf Augenhöhe der Totale
+  const HORIZONT = 0.27;
+  talMesh.position.set(0, talHoehe * 0.5 - HORIZONT * talHoehe + 2.4, 0);
   talMesh.renderOrder = -10;
   szene.add(talMesh);
 
@@ -95,8 +97,8 @@ export async function baueSzene3D(renderer) {
   {
     const g = pano.getContext('2d');
     const himmel = g.createLinearGradient(0, 0, 0, 512);
-    himmel.addColorStop(0, '#5d6678');
-    himmel.addColorStop(1, '#8c93a3');
+    himmel.addColorStop(0, '#5f8f98');
+    himmel.addColorStop(1, '#2c4a52');
     g.fillStyle = himmel; g.fillRect(0, 0, 2048, 512);
     g.fillStyle = '#211f24'; g.fillRect(0, 512, 2048, 512);
     // Band mit dem Tal, gespiegelt rundherum
@@ -109,29 +111,39 @@ export async function baueSzene3D(renderer) {
     // warmes Laternenlicht unten, kühles Licht oben
     g.globalCompositeOperation = 'lighter';
     const l = g.createRadialGradient(1024, 640, 10, 1024, 640, 300);
-    l.addColorStop(0, 'rgba(255,170,90,0.35)'); l.addColorStop(1, 'rgba(0,0,0,0)');
+    l.addColorStop(0, 'rgba(255,150,80,0.22)'); l.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = l; g.fillRect(0, 300, 2048, 700);
   }
   const panoTex = new THREE.CanvasTexture(pano);
   panoTex.mapping = THREE.EquirectangularReflectionMapping;
   panoTex.colorSpace = THREE.SRGBColorSpace;
   szene.environment = pmrem.fromEquirectangular(panoTex).texture;
-  szene.environmentIntensity = 0.6;
+  szene.environmentIntensity = 0.22;
 
   // ------------------------------------------------------------ Licht
-  const himmelLicht = new THREE.HemisphereLight(0x9aa6c4, 0x1c1a22, 0.3);
+  const himmelLicht = new THREE.HemisphereLight(0x6d9aa3, 0x05080a, 0.12);
   szene.add(himmelLicht);
-  const schluessel = new THREE.DirectionalLight(0xfff1e2, 2.6);
-  schluessel.position.set(-13, 15, 9);
+  // Lichtkegel von oben (wie durch eine Öffnung im Blätterdach)
+  const kegelLicht = new THREE.SpotLight(0xd4f4ff, 2600, 80, 0.2, 0.75, 1.5);
+  kegelLicht.position.set(1.2, 46, 3.5);
+  kegelLicht.target.position.set(0, 4, 0.5);
+  szene.add(kegelLicht, kegelLicht.target);
+  // schwaches Mondlicht von vorn, damit das Gesicht nicht absäuft
+  const schluessel = new THREE.DirectionalLight(0x9fc6d2, 0.35);
+  schluessel.position.set(-8, 10, 14);
   szene.add(schluessel);
-  const kante = new THREE.DirectionalLight(0xa8b8ff, 2.8);
-  kante.position.set(9, 10, -14);
+  const kante = new THREE.DirectionalLight(0x8fe6ff, 3.2);
+  kante.position.set(9, 12, -14);
   szene.add(kante);
-  const laterne = new THREE.PointLight(0xffa45a, 16, 30, 1.6);
-  laterne.position.set(-6, 1.5, 9);
+  const kante2 = new THREE.DirectionalLight(0x6fbfd0, 1.6);
+  kante2.position.set(-11, 6, -10);
+  szene.add(kante2);
+  // warmer Akzent: eine Laterne halb hinter der Katze
+  const laterne = new THREE.PointLight(0xff9a4a, 22, 26, 1.6);
+  laterne.position.set(-7.5, 1.2, -2.5);
   szene.add(laterne);
-  const laterne2 = new THREE.PointLight(0xff9a50, 10, 26, 1.6);
-  laterne2.position.set(7, 1.2, 7);
+  const laterne2 = new THREE.PointLight(0xff8a40, 6, 20, 1.6);
+  laterne2.position.set(6.5, 0.8, 6);
   szene.add(laterne2);
 
   // ------------------------------------------------------------ Katze
@@ -260,41 +272,144 @@ export async function baueSzene3D(renderer) {
         totalEmissiveRadiance += p3farbe * p3maske * 1.4;`)
       // Glanzlichter begrenzen: sonst laufen sie im Half-Float-Puffer über und blühen als Quadrate auf
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-        gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(12.0));`);
+        gl_FragColor.rgb = min(gl_FragColor.rgb, vec3(12.0));
+        // der Lichtkegel kommt von oben: nach unten fällt das Licht ab (Portal ausgenommen)
+        gl_FragColor.rgb *= mix(mix(0.42, 1.0, smoothstep(0.02, 0.7, vModell.y)), 1.0, p3maske);`);
   };
   const katze = new THREE.Mesh(geo, mat);
   katze.scale.setScalar(S);
+  katze.position.y = SOCKEL;
   szene.add(katze);
 
   // Licht aus dem Portal
-  const portalWelt = MODELL.portal.c.clone().multiplyScalar(S);
+  const portalWelt = MODELL.portal.c.clone().multiplyScalar(S).add(new THREE.Vector3(0, SOCKEL, 0));
   const portalNormal = MODELL.portal.n.clone();
   const portalLicht = new THREE.PointLight(0x9a55ff, 0, 14, 1.4);
   portalLicht.position.copy(portalWelt).addScaledVector(portalNormal, 1.6);
   szene.add(portalLicht);
 
-  // Kontaktschatten unter der Katze
-  {
-    const c = document.createElement('canvas'); c.width = c.height = 128;
-    const g = c.getContext('2d');
-    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-    const t = new THREE.CanvasTexture(c);
-    const schatten = new THREE.Mesh(new THREE.PlaneGeometry(13, 10), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
-    schatten.rotation.x = -Math.PI / 2;
-    schatten.position.set(0, 0.02, 0);
-    szene.add(schatten);
-  }
-  // Boden: dunkler Stein, verschwindet im Nebel
-  const bodenMat = new THREE.MeshStandardMaterial({ color: 0x2c2b30, roughness: 0.8, transparent: true, depthWrite: false });
-  bodenMat.onBeforeCompile = (sh) => {
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vB;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvB = position.xy;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vB;').replace('#include <dithering_fragment>', '#include <dithering_fragment>\ngl_FragColor.a *= smoothstep(70.0, 35.0, length(vB));');
+  // Steinsockel: die Katze steht auf einer flachen Insel im Wasser
+  const steinMat = new THREE.MeshStandardMaterial({ color: 0x14191a, roughness: 0.45, metalness: 0 });
+  steinMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vS;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvS = position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vS;\n${NOISE}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float sn = p3fbm(vS.xz * 1.3 + vS.y * 2.0);
+        float moos = smoothstep(0.55, 0.75, p3fbm(vS.xz * 0.7 + 4.0)) * smoothstep(0.2, 0.75, vS.y);
+        diffuseColor.rgb *= 0.55 + sn * 0.8;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.09, 0.16, 0.08), moos * 0.8);
+        diffuseColor.rgb *= mix(0.35, 1.0, smoothstep(-0.4, 0.5, vS.y)); // nass und dunkel am Wasser`);
   };
-  const boden = new THREE.Mesh(new THREE.CircleGeometry(70, 64), bodenMat);
-  boden.rotation.x = -Math.PI / 2;
-  szene.add(boden);
+  const sockelGeo = new THREE.CylinderGeometry(6.0, 7.2, 1.4, 56, 3);
+  {
+    // unregelmäßiger Rand
+    const p = sockelGeo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), y = p.getY(i);
+      const w = Math.atan2(z, x);
+      const f = 1 + 0.05 * Math.sin(w * 7 + 1.3) + 0.035 * Math.sin(w * 13 + 0.4) + (y < 0 ? 0.04 : 0);
+      p.setXYZ(i, x * f, y + 0.08 * Math.sin(w * 5), z * f);
+    }
+    sockelGeo.computeVertexNormals();
+  }
+  const sockel = new THREE.Mesh(sockelGeo, steinMat);
+  sockel.position.y = 0.0;
+  szene.add(sockel);
+
+  // Wasser: echte Spiegelung (die Welt einmal gespiegelt in einen Puffer), dazu Kräuseln
+  const spiegelZiel = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+  const wasserU = { uSpiegel: { value: spiegelZiel.texture }, uZeit: zeitU, uSchirm: { value: new THREE.Vector2(1, 1) }, uKegel: { value: 1 } };
+  const wasser = new THREE.Mesh(new THREE.CircleGeometry(90, 72), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: wasserU,
+    vertexShader: /* glsl */ `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D uSpiegel; uniform float uZeit; uniform vec2 uSchirm; uniform float uKegel; varying vec3 vW;
+      ${NOISE}
+      void main() {
+        vec2 p = vW.xz;
+        // Kräuseln: zwei Rauschfelder, die gegeneinander ziehen
+        float a = p3fbm(p * 0.35 + vec2(uZeit * 0.12, uZeit * 0.05));
+        float b = p3fbm(p * 0.9 - vec2(uZeit * 0.08, -uZeit * 0.11));
+        vec2 stoer = (vec2(a, b) - 0.5) * 0.035;
+        // Ringe um den Sockel
+        float r = length(p);
+        stoer += normalize(p + 0.001) * sin(r * 3.2 - uZeit * 1.6) * 0.004 * smoothstep(16.0, 7.0, r);
+        vec2 suv = gl_FragCoord.xy / uSchirm + stoer;
+        vec3 spiegel = texture2D(uSpiegel, suv).rgb;
+        vec3 blick = normalize(cameraPosition - vW);
+        float fres = 0.25 + 0.75 * pow(1.0 - max(blick.y, 0.0), 4.0);
+        vec3 tief = vec3(0.006, 0.014, 0.016);
+        vec3 c = mix(tief, spiegel * 0.85, fres);
+        // Lichtkegel trifft das Wasser
+        c += vec3(0.25, 0.5, 0.55) * 0.12 * uKegel * exp(-dot(p - vec2(0.8, 1.5), p - vec2(0.8, 1.5)) / 60.0) * (0.6 + a);
+        float alpha = smoothstep(90.0, 45.0, r);
+        gl_FragColor = vec4(c, alpha);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  }));
+  wasser.rotation.x = -Math.PI / 2;
+  wasser.renderOrder = -5;
+  szene.add(wasser);
+
+  // Lichtkegel als Volumen: weicher Konus, flimmernder Staub darin
+  const kegel = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 9.5, 48, 48, 1, true), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    uniforms: { uZeit: zeitU, uKegel: wasserU.uKegel },
+    vertexShader: /* glsl */ `varying vec3 vN; varying vec3 vW; varying float vH;
+      void main(){ vH = uv.y; vN = normalize(normalMatrix * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: /* glsl */ `uniform float uZeit; uniform float uKegel; varying vec3 vN; varying vec3 vW; varying float vH;
+      ${NOISE}
+      void main(){
+        vec3 v = normalize((viewMatrix * vec4(vW, 1.0)).xyz);
+        float rand = abs(dot(vN, v));
+        float weich = rand * rand;
+        float streifen = 0.65 + 0.35 * p3fbm(vec2(atan(vW.z, vW.x) * 3.0, vW.y * 0.05 - uZeit * 0.03));
+        float hoehe = smoothstep(0.0, 0.25, vH) * smoothstep(1.0, 0.55, vH);
+        float a = weich * streifen * hoehe * 0.075 * uKegel;
+        gl_FragColor = vec4(vec3(0.62, 0.92, 1.0) * a, 1.0);
+      }`,
+  }));
+  kegel.position.set(0.6, 24, 1.8);
+  kegel.rotation.z = -0.025;
+  kegel.renderOrder = 5;
+  szene.add(kegel);
+
+  const STAUB = 900;
+  const staubPos = new Float32Array(STAUB * 3);
+  const staubSeed = new Float32Array(STAUB);
+  for (let i = 0; i < STAUB; i++) {
+    const h = Math.random();
+    const r = Math.sqrt(Math.random()) * (1.5 + 8 * (1 - h));
+    const w = Math.random() * Math.PI * 2;
+    staubPos.set([Math.cos(w) * r + 0.6, h * 30, Math.sin(w) * r + 1.8], i * 3);
+    staubSeed[i] = Math.random();
+  }
+  const staubGeo = new THREE.BufferGeometry();
+  staubGeo.setAttribute('position', new THREE.BufferAttribute(staubPos, 3));
+  staubGeo.setAttribute('aSeed', new THREE.BufferAttribute(staubSeed, 1));
+  const staub = new THREE.Points(staubGeo, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uZeit: zeitU, uKegel: wasserU.uKegel, uPixel: { value: 1 } },
+    vertexShader: /* glsl */ `attribute float aSeed; uniform float uZeit; uniform float uPixel; varying float vA;
+      void main(){
+        vec3 p = position;
+        p.y = mod(p.y - uZeit * (0.15 + aSeed * 0.25), 30.0);
+        p.x += sin(uZeit * 0.3 + aSeed * 40.0) * 0.6;
+        p.z += cos(uZeit * 0.25 + aSeed * 30.0) * 0.6;
+        vec4 mv = viewMatrix * modelMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = uPixel * (14.0 + aSeed * 22.0) / -mv.z;
+        vA = (0.35 + 0.65 * abs(sin(uZeit * (0.6 + aSeed) + aSeed * 20.0))) * smoothstep(0.0, 3.0, p.y) * smoothstep(30.0, 22.0, p.y);
+      }`,
+    fragmentShader: /* glsl */ `uniform float uKegel; varying float vA;
+      void main(){ vec2 d = gl_PointCoord - 0.5; float k = smoothstep(0.5, 0.0, length(d)); gl_FragColor = vec4(vec3(0.75, 0.95, 1.0) * k * vA * 0.5 * uKegel, 1.0); }`,
+  }));
+  staub.frustumCulled = false;
+  staub.renderOrder = 6;
+  szene.add(staub);
 
   // ------------------------------------------------------------ Nebel (Schichten)
   const nebelMat = (farbe, dichte, tempo) => new THREE.ShaderMaterial({
@@ -318,11 +433,11 @@ export async function baueSzene3D(renderer) {
       }`,
   });
   const schichten = [
-    { z: -30, y: 2, b: 160, h: 26, d: 0.55, t: 0.006, f: 0x5a5e6a },
-    { z: -8, y: -1, b: 70, h: 12, d: 0.6, t: 0.01, f: 0x6c707c },
-    { z: -4, y: -1, b: 50, h: 7, d: 0.8, t: 0.012, f: 0x7a7e8a },
-    { z: 4.5, y: -1.4, b: 60, h: 5.5, d: 1.0, t: 0.014, f: 0x8a8d98 },
-    { z: 12, y: -1.6, b: 50, h: 3.5, d: 0.7, t: 0.02, f: 0x9a9ca6 },
+    { z: -30, y: 1, b: 160, h: 26, d: 0.5, t: 0.006, f: 0x2c4a50 },
+    { z: -8, y: -0.5, b: 70, h: 12, d: 0.45, t: 0.01, f: 0x35565c },
+    { z: -4, y: -0.5, b: 50, h: 7, d: 0.5, t: 0.012, f: 0x3e6066 },
+    { z: 5, y: -0.6, b: 60, h: 4.5, d: 0.45, t: 0.014, f: 0x4a6c72 },
+    { z: 13, y: -0.8, b: 50, h: 3.0, d: 0.35, t: 0.02, f: 0x56787e },
   ];
   const nebel = schichten.map((s) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(s.b, s.h), nebelMat(s.f, s.d, s.t));
@@ -331,9 +446,9 @@ export async function baueSzene3D(renderer) {
     return m;
   });
   // liegender Bodennebel über dem Stein
-  const liegend = new THREE.Mesh(new THREE.PlaneGeometry(140, 90), nebelMat(0x80838e, 0.5, 0.008));
+  const liegend = new THREE.Mesh(new THREE.PlaneGeometry(140, 90), nebelMat(0x4d7076, 0.3, 0.008));
   liegend.rotation.x = -Math.PI / 2;
-  liegend.position.set(0, 0.5, 10);
+  liegend.position.set(0, 0.35, 10);
   szene.add(liegend);
   nebel.push(liegend);
 
@@ -354,9 +469,11 @@ export async function baueSzene3D(renderer) {
         vec3 c = texture2D(tDiffuse, vUv).rgb;
         // Schatten leicht kühl, Lichter warm
         float l = dot(c, vec3(0.299, 0.587, 0.114));
-        c += (vec3(-0.01, 0.0, 0.025) * (1.0 - l) + vec3(0.02, 0.008, -0.015) * l) * 0.8;
-        float vig = smoothstep(1.25, 0.35, length((vUv - 0.5) * vec2(uSchirm.x / uSchirm.y, 1.0) * 1.1));
-        c *= mix(0.5, 1.0, vig) * uHell;
+        // Tiefen türkis, Lichter neutral bis warm, etwas mehr Kontrast (S-Kurve)
+        c += (vec3(-0.012, 0.01, 0.014) * (1.0 - l) + vec3(0.015, 0.006, -0.01) * l);
+        c = mix(c, c * c * (3.0 - 2.0 * c), 0.35);
+        float vig = smoothstep(1.2, 0.25, length((vUv - 0.5) * vec2(uSchirm.x / uSchirm.y, 1.0) * 1.1));
+        c *= mix(0.32, 1.0, vig) * uHell;
         c += (h(vUv * uSchirm + fract(uZeit * 7.13) * 100.0) - 0.5) * 0.03;
         gl_FragColor = vec4(c, 1.0);
       }`,
@@ -364,13 +481,13 @@ export async function baueSzene3D(renderer) {
   composer.addPass(look);
 
   // ------------------------------------------------------------ Kamera
-  const blickZiel = new THREE.Vector3(0, 6.0, 0);
+  const blickZiel = new THREE.Vector3(0, 6.6, 0);
   function totale(aspekt) {
     const tanV = Math.tan(THREE.MathUtils.degToRad(kamera.fov / 2));
     const hoeheNoetig = GROESSE * 1.32;
     const breiteNoetig = 8.6 * 1.25;
     const d = Math.max(hoeheNoetig / (2 * tanV), breiteNoetig / (2 * tanV * aspekt));
-    return new THREE.Vector3(0, 5.2, d);
+    return new THREE.Vector3(0, 2.6, d);
   }
   function portalPosition(aspekt) {
     const tanV = Math.tan(THREE.MathUtils.degToRad(kamera.fov / 2));
@@ -385,6 +502,9 @@ export async function baueSzene3D(renderer) {
     composer.setSize(b, h);
     bloom.resolution.set(b * pr, h * pr);
     look.uniforms.uSchirm.value.set(b * pr, h * pr);
+    wasserU.uSchirm.value.set(b * pr, h * pr);
+    spiegelZiel.setSize(Math.round(b * pr * 0.5), Math.round(h * pr * 0.5));
+    staub.material.uniforms.uPixel.value = h * pr * 0.004;
     kamera.aspect = b / h;
     kamera.updateProjectionMatrix();
   }
@@ -420,6 +540,20 @@ export async function baueSzene3D(renderer) {
     groesse,
     schreibe(text) { schreibeAufLeinwand(textCanvas, text); textTex.needsUpdate = true; },
     stelleKamera,
-    zeichne(zeit) { zeitU.value = zeit; composer.render(); },
+    zeichne(zeit) {
+      zeitU.value = zeit;
+      // Spiegelung: Welt an der Wasserfläche spiegeln und in den Puffer rendern
+      wasser.visible = false; nebel.forEach((m) => { m.visible = false; });
+      szene.scale.y = -1;
+      szene.updateMatrixWorld();
+      renderer.setRenderTarget(spiegelZiel);
+      renderer.clear();
+      renderer.render(szene, kamera);
+      renderer.setRenderTarget(null);
+      szene.scale.y = 1;
+      wasser.visible = true; nebel.forEach((m) => { m.visible = true; });
+      composer.render();
+    },
+    kegelU: wasserU.uKegel,
   };
 }
