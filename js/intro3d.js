@@ -104,7 +104,7 @@ export async function spieleIntro3D(renderer, { ueberspringbar = false, klang = 
         ${NOISE}
         void main() {
           vec2 uv = vec2(1.0 - vUv.x, vUv.y);
-          vec3 c = pow(texture2D(uTal, uv, 1.5).rgb, vec3(2.2));
+          vec3 c = pow(max(texture2D(uTal, uv, 1.5).rgb, 0.0), vec3(2.2));
           float l = dot(c, vec3(0.299, 0.587, 0.114));
           vec3 nacht = mix(vec3(l), c, 0.35) * vec3(0.55, 0.65, 1.0) * 0.07;
           // Gewitterwolken ziehen über den Himmel
@@ -140,9 +140,11 @@ export async function spieleIntro3D(renderer, { ueberspringbar = false, klang = 
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vObjPos; varying vec3 vObjN; uniform float uGlanz; uniform float uGlanzStaerke;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        float glanzBand = exp(-pow((vObjPos.x + vObjPos.y * 0.45 - uGlanz) * 7.0, 2.0));
+        float glanzD = (vObjPos.x + vObjPos.y * 0.45 - uGlanz) * 7.0;
+        float glanzBand = exp(-glanzD * glanzD); // pow() mit negativer Basis ist auf dem iPhone NaN
         float kante = 1.0 - abs(normalize(vObjN).z);
-        totalEmissiveRadiance += vec3(1.0, 0.6, 0.22) * glanzBand * (kante * 3.5 + 0.15) * uGlanzStaerke;`);
+        totalEmissiveRadiance += vec3(1.0, 0.6, 0.22) * glanzBand * (kante * 3.5 + 0.15) * uGlanzStaerke;`)
+      .replace('#include <dithering_fragment>', '#include <dithering_fragment>\ngl_FragColor.rgb = min(gl_FragColor.rgb, vec3(12.0));');
   };
   const logo = new THREE.Mesh(logoGeo, logoMat);
   const BREITE = 46;
@@ -182,7 +184,7 @@ export async function spieleIntro3D(renderer, { ueberspringbar = false, klang = 
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     uniforms: { uStaerke: { value: 0 } },
     vertexShader: /* glsl */ `attribute float aQuer; varying float vQ; void main(){ vQ = aQuer; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: /* glsl */ `uniform float uStaerke; varying float vQ; void main(){ float k = 1.0 - abs(vQ); gl_FragColor = vec4(vec3(2.5, 2.7, 3.6) * pow(k, 1.5) * uStaerke, 1.0); }`,
+    fragmentShader: /* glsl */ `uniform float uStaerke; varying float vQ; void main(){ float k = clamp(1.0 - abs(vQ), 0.0, 1.0); gl_FragColor = vec4(vec3(2.5, 2.7, 3.6) * k * sqrt(k) * uStaerke, 1.0); }`,
   });
   let zufall = 7;
   const rnd = () => { zufall = (zufall * 16807) % 2147483647; return zufall / 2147483647; };
