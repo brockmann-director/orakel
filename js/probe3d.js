@@ -117,7 +117,7 @@ function schritt() {
       const h = z.halt;
       if (h) {
         const rest = h.ziel - z.phase;
-        z.omega = h.omega0 * Math.pow(klemme(rest / h.weg), 0.667);
+        z.omega = h.omega0 * Math.sqrt(klemme(rest / h.weg)); // gleichmäßig bremsen: steht nach höchstens ~5 s
         if (rest < 0.004) { z.phase = h.ziel; z.omega = 0; z.halt = null; }
       }
       z.flug = z.vonFlug + (1 - z.vonFlug) * inOut(klemme(t / 3.4));
