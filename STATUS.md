@@ -30,7 +30,7 @@ Winkekatzen-Orakel für die 27km-Kollegies. Frage laut stellen (oder iPhone sch�
 
 ## Testen
 - `python3 -m http.server` im Repo, dann `http://localhost:8000/`
-- `?test` überspringt Start + Ident, `?test&modus=antwort&frage=…` zeigt direkt eine Antwort, `?test&modus=ritual&t=2` springt ins Ritual, `?standbild` ohne Video.
+- `?test` überspringt Start + Ident, `?test&modus=antwort&frage=…` zeigt direkt eine Antwort (fährt nach 5,5 s von allein zurück, `&stehen` hält sie fest), `?test&modus=ritual&t=2` springt ins Ritual, `?standbild` ohne Video.
 - MiniMax-Video hat Jans Bild zweimal fälschlich als NSFW gefiltert; Kling geht.
 
 ## Offen

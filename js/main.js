@@ -10,6 +10,7 @@ import { teilen } from './teilen.js';
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 const TEST = params.has('test');
+const TEST_STEHEN = params.has('stehen'); // Antwort bleibt stehen (für Standbilder)
 const istTouch = matchMedia('(pointer: coarse)').matches;
 const reduziert = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -187,12 +188,15 @@ function planeHalt() {
   z.halt = { welle, jetzt, dauer: Math.max(1.2, Math.min(2.6, 3 * strecke / Math.max(0.3, z.rate))), warten: von === null };
 }
 
+// Wie lange die Antwort im Portal steht, bevor die Kamera von allein zurück in die Totale fährt.
+const ANTWORT_DAUER = 5.5;
+
 function naechsteFrage(direkt = false) {
   geheZu('wechsel');
   frageAnzeige.textContent = '';
   zeigeHinweis('');
   klang.atmoLautstaerke(0.5, 2);
-  z.danach = direkt ? () => ritual('') : lauschen;
+  z.danach = direkt === 'ruhe' ? ruheHinweis : direkt ? () => ritual('') : lauschen;
 }
 
 function antippen() {
@@ -324,17 +328,18 @@ function schritt() {
     case 'antwort':
       z.wirbel = naeher(z.wirbel, 0.3, dt, 1);
       z.glimmen = 0.55 + 0.08 * Math.sin(zeit * 1.3);
+      if (t > ANTWORT_DAUER && !TEST_STEHEN) naechsteFrage('ruhe');
       break;
     case 'wechsel': {
       // Antwort sinkt, Kamera fährt zurück, die Pfote nimmt Fahrt auf.
-      z.auftauchen = Math.max(0, 1 - t / 0.6);
-      z.zoom = z.vonZoom * (1 - ease.inOut(klemme((t - 0.2) / 1.3)));
-      z.umgebung = 1 - ease.inOut(klemme(t / 1.4));
-      if (t > 0.4 && einmal('los')) { videoStart(); z.rate = 0.15; }
-      if (t > 0.4) z.rate = naeher(z.rate, 1, dt, 1.4);
-      z.portal = naeher(z.portal, 0.5, dt, 2);
-      z.wirbel = naeher(z.wirbel, 0, dt, 2);
-      if (t > 1.6) { const weiter = z.danach; geheZu('ruhe'); weiter(); }
+      z.auftauchen = Math.max(0, 1 - t / 0.45);
+      z.zoom = z.vonZoom * (1 - ease.inOut(klemme((t - 0.1) / 1.0)));
+      z.umgebung = 1 - ease.inOut(klemme(t / 1.1));
+      if (t > 0.3 && einmal('los')) { videoStart(); z.rate = 0.2; }
+      if (t > 0.3) z.rate = naeher(z.rate, 1, dt, 1.8);
+      z.portal = naeher(z.portal, 0.5, dt, 2.5);
+      z.wirbel = naeher(z.wirbel, 0, dt, 2.5);
+      if (t > 1.2) { const weiter = z.danach; geheZu('ruhe'); weiter(); }
       break;
     }
     default:
